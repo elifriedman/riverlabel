@@ -1,0 +1,13 @@
+[Unit]
+Description=Launch Label Studio
+After=network.target
+
+[Service]
+ExecStart=/home/shakedfried/scripts/runner.sh
+Type=simple
+User=shakedfried
+WorkingDirectory=/home/shakedfried/
+Environment=LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
+
+[Install]
+WantedBy=multi-user.target
