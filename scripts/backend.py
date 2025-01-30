@@ -28,7 +28,7 @@ def get_views_for_project(client, project_id):
 def get_default_view(client, project_id, views=None):
     if views is None:
         views = get_views_for_project(client, project_id)
-    default_view = next(view for view in views if view.data["title"] == "Default")
+    default_view = views[0]
     return default_view
 
 def add_task_title(task):

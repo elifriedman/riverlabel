@@ -15,12 +15,12 @@ def map():
     line_start_y = request.args.get('line_start_y', default=659523.68, type=float)
     line_end_x = request.args.get('line_end_x', default=184046.82, type=float)
     line_end_y = request.args.get('line_end_y', default=659277.61, type=float)
-    previous_line_start_x = request.args.get('previous_line_start_x', default=0, type=float)
-    previous_line_start_y = request.args.get('previous_line_start_y', default=0, type=float)
+    previous_line_start_x = request.args.get('prev_line_start_x', default=0, type=float)
+    previous_line_start_y = request.args.get('prev_line_start_y', default=0, type=float)
     next_line_start_x = request.args.get('next_line_start_x', default=0, type=float)
     next_line_start_y = request.args.get('next_line_start_y', default=0, type=float)
-    previous_line_end_x = request.args.get('previous_line_end_x', default=0, type=float)
-    previous_line_end_y = request.args.get('previous_line_end_y', default=0, type=float)
+    previous_line_end_x = request.args.get('prev_line_end_x', default=0, type=float)
+    previous_line_end_y = request.args.get('prev_line_end_y', default=0, type=float)
     next_line_end_x = request.args.get('next_line_end_x', default=0, type=float)
     next_line_end_y = request.args.get('next_line_end_y', default=0, type=float)
 
@@ -30,7 +30,7 @@ def map():
         <script src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
         <script src="https://www.govmap.gov.il/govmap/api/govmap.api.js"></script>
         <script type="text/javascript">
-            function getLineData(x1, y1, x2, y2, centerX, centerY) {{
+            function getLineData(x1, y1, x2, y2, arrowDirection) {{
                 const arrowLength = 8;
                 const distance = 4
                 let lineCenterX = (x1 + x2) / 2;
@@ -38,7 +38,7 @@ def map():
 				const angle = Math.atan2(y2 - y1, x2 - x1);
 				
 
-				const perpendicularAngle = angle - Math.PI / 2;
+				const perpendicularAngle = angle + arrowDirection * Math.PI / 2;
                 lineCenterX += distance * Math.cos(perpendicularAngle);
                 lineCenterY += distance * Math.sin(perpendicularAngle);
 
@@ -68,18 +68,46 @@ def map():
                     console.log(response.data);
                 }});
             }}
+			function calculateArrowDirection(lineStart, lineEnd, lineStartNext, lineEndNext) {{
+              if (lineStartNext == 0) {{
+                  return 1;
+              }}
+			  const dx1 = lineEnd[0] - lineStart[0];
+			  const dy1 = lineEnd[1] - lineStart[1];
+			  const dx2 = lineEndNext[0] - lineStartNext[0];
+			  const dy2 = lineEndNext[1] - lineStartNext[1];
+
+			  const length2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+			  const perpLine = [-dy2 / length2, dx2 / length2];
+
+			  const length1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+			  const normLine = [dx1 / length1, dy1 / length1];
+
+			  const dotProduct = perpLine[0] * normLine[0] + perpLine[1] * normLine[1];
+
+			  const angle = Math.acos(dotProduct) * (180 / Math.PI);
+
+			  return angle > 0 ? 1 : -1;
+
+			  //const crossProduct = (lineEnd[0] - lineStart[0]) * (lineEndNext[1] - lineStartNext[1]) -
+			  //  				   (lineEnd[1] - lineStart[1]) * (lineEndNext[0] - lineStartNext[0]);
+
+              //console.log("crossProduct", crossProduct);
+			  //return crossProduct >= 0 ? 1 : -1;
+			}}
 
             function drawInitial() {{
                 const center = [{center_x}, {center_y}];
                 const lineStart = [{line_start_x}, {line_start_y}];
                 const lineEnd = [{line_end_x}, {line_end_y}];
-                const wkt = getLineData(lineStart[0], lineStart[1], lineEnd[0], lineEnd[1]);
                 const lineStartPrev = [{previous_line_start_x}, {previous_line_start_y}];
                 const lineEndPrev = [{previous_line_end_x}, {previous_line_end_y}];
-                const wktPrev = getLineData(lineStartPrev[0], lineStartPrev[1], lineEndPrev[0], lineEndPrev[1]);
                 const lineStartNext = [{next_line_start_x}, {next_line_start_y}];
                 const lineEndNext = [{next_line_end_x}, {next_line_end_y}];
-                const wktNext = getLineData(lineStartNext[0], lineStartNext[1], lineEndNext[0], lineEndNext[1]);
+                const arrow = calculateArrowDirection(lineStart, lineEnd, lineStartNext, lineEndNext);
+                const wkt = getLineData(lineStart[0], lineStart[1], lineEnd[0], lineEnd[1], arrow);
+                const wktPrev = getLineData(lineStartPrev[0], lineStartPrev[1], lineEndPrev[0], lineEndPrev[1], arrow);
+                const wktNext = getLineData(lineStartNext[0], lineStartNext[1], lineEndNext[0], lineEndNext[1], arrow);
                 const wkts = [].concat(wkt).concat(wktPrev).concat(wktNext);
                 const data = {{
                     wkts: wkts,
@@ -100,19 +128,19 @@ def map():
                         width: 2,
                     }},
                     {{
-                        color: [128, 255, 0, 1],
+                        color: [128, 128, 128, 1],
                         width: 2,
                     }},
                     {{
-                        color: [128, 255, 0, 1],
+                        color: [128, 128, 128, 1],
                         width: 2,
                     }},
                     {{
-                        color: [0, 255, 128, 1],
+                        color: [128, 0, 0, 1],
                         width: 2,
                     }},
                     {{
-                        color: [0, 255, 128, 1],
+                        color: [128, 0, 0, 1],
                         width: 2,
                     }}
                     ],
