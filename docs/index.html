@@ -1,0 +1,168 @@
+<html>
+    <head>
+        <script src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
+        <script src="https://www.govmap.gov.il/govmap/api/govmap.api.js"></script>
+        <script type="text/javascript">
+            function getLineData(x1, y1, x2, y2, arrowDirection) {
+                const arrowLength = 8;
+                const distance = 4
+                let lineCenterX = (x1 + x2) / 2;
+                let lineCenterY = (y1 + y2) / 2;
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+
+
+                const perpendicularAngle = angle + arrowDirection * Math.PI / 2;
+                lineCenterX += distance * Math.cos(perpendicularAngle);
+                lineCenterY += distance * Math.sin(perpendicularAngle);
+
+                const arrowPoint1X = lineCenterX + arrowLength * Math.cos(angle);
+                const arrowPoint1Y = lineCenterY + arrowLength * Math.sin(angle);
+                const arrowPoint2X = lineCenterX - arrowLength * Math.cos(angle);
+                const arrowPoint2Y = lineCenterY - arrowLength * Math.sin(angle);
+                const arrowPointTipX = lineCenterX + arrowLength * Math.cos(perpendicularAngle);
+                const arrowPointTipY = lineCenterY + arrowLength * Math.sin(perpendicularAngle);
+
+                const wkt = [
+                    `LINESTRING(${x1} ${y1}, ${x2} ${y2})`,
+                    `LINESTRING(
+      ${lineCenterX} ${lineCenterY},
+      ${arrowPoint1X} ${arrowPoint1Y},
+      ${arrowPointTipX} ${arrowPointTipY},
+      ${arrowPoint2X} ${arrowPoint2Y},
+      ${lineCenterX} ${lineCenterY}
+    )`
+                ];
+                return wkt;
+            }
+
+            function startDisplay(centerX, centerY, data) {
+                govmap.zoomToXY({x: centerX, y: centerY, level: 8});
+                govmap.displayGeometries(data).then(function(response) {
+                    console.log(response.data);
+                });
+            }
+            function calculateArrowDirection(lineStart, lineEnd, lineStartNext, lineEndNext) {
+                if (lineStartNext == 0) {
+                    return 1;
+                }
+                const line1 = [lineEnd[0] - lineStart[0], lineEnd[1] - lineStart[1]];
+                const center1 = [(lineStart[0] + lineEnd[0]) / 2, (lineStart[1] + lineEnd[1]) / 2];
+                const center2 = [(lineStartNext[0] + lineEndNext[0]) / 2, (lineStartNext[1] + lineEndNext[1]) / 2];
+                const perp = [center2[0] - center1[0], center2[1] - center1[1]]; // Fixed typo in center1[1]
+
+                const crossProduct = line1[0] * perp[1] - line1[1] * perp[0];
+                const dotProduct = line1[0] * perp[0] + line1[1] * perp[1];
+                const signed_angle = -Math.atan2(crossProduct, dotProduct);
+                return signed_angle <= 0 ? 1 : -1;
+            }
+
+            function drawInitial() {
+                const params = new URLSearchParams(window.location.search);
+                const getFloatParam = (name, defaultValue) => {
+                        const value = params.get(name);
+                        return value !== null ? parseFloat(value) : defaultValue;
+                };
+				const center = [
+				  getFloatParam('center_x', 183965.46),
+				  getFloatParam('center_y', 659428.42)
+				];
+				const lineStart = [
+				  getFloatParam('line_start_x', 184067.33),
+				  getFloatParam('line_start_y', 659523.68)
+				];
+				const lineEnd = [
+				  getFloatParam('line_end_x', 184046.82),
+				  getFloatParam('line_end_y', 659277.61)
+				];
+				const lineStartPrev = [
+				  getFloatParam('prev_line_start_x', 0),
+				  getFloatParam('prev_line_start_y', 0)
+				];
+				const lineEndPrev = [
+				  getFloatParam('prev_line_end_x', 0),
+				  getFloatParam('prev_line_end_y', 0)
+				];
+				const lineStartNext = [
+				  getFloatParam('next_line_start_x', 0),
+				  getFloatParam('next_line_start_y', 0)
+				];
+				const lineEndNext = [
+				  getFloatParam('next_line_end_x', 0),
+				  getFloatParam('next_line_end_y', 0)
+				];
+                            console.log(lineStart, lineStartNext);
+                            console.log(lineEnd, lineEndNext);
+                const arrow = calculateArrowDirection(lineStart, lineEnd, lineStartNext, lineEndNext);
+                const wkt = getLineData(lineStart[0], lineStart[1], lineEnd[0], lineEnd[1], arrow);
+                const wktPrev = getLineData(lineStartPrev[0], lineStartPrev[1], lineEndPrev[0], lineEndPrev[1], arrow);
+                const wktNext = getLineData(lineStartNext[0], lineStartNext[1], lineEndNext[0], lineEndNext[1], arrow);
+                const wkts = [].concat(wkt).concat(wktPrev).concat(wktNext);
+                const data = {
+                    wkts: wkts,
+                    names: ['p1', 'a1', 'p2', 'a2', 'p3', 'a3'],
+                    geometryType: govmap.drawType.Polyline,
+                    defaultSymbol:
+                    {
+                        color: [0, 255, 0, 1],
+                        width: 2,
+                    },
+                    symbols: [
+                        {
+                            color: [0, 255, 0, 1],
+                            width: 2,
+                        },
+                        {
+                            color: [0, 255, 0, 1],
+                            width: 2,
+                        },
+                        {
+                            color: [128, 128, 128, 1],
+                            width: 2,
+                        },
+                        {
+                            color: [128, 128, 128, 1],
+                            width: 2,
+                        },
+                        {
+                            color: [128, 0, 0, 1],
+                            width: 2,
+                        },
+                        {
+                            color: [128, 0, 0, 1],
+                            width: 2,
+                        }
+                    ],
+                    learExisting: true,
+                    data: {
+                        tooltips: ['קו גובה'],
+                    }
+                };
+                startDisplay(center[0], center[1], data);
+            }
+
+            function loadMap() {
+                govmap.createMap('map',
+                    {
+                        token: '5a4b8472-b95b-4687-8179-0ccb621c7990',
+                        visibleLayers: ["WATER_FLOW"],
+                        showXY: true,
+                        identifyOnClick: false,
+                        center: {x: 183965.46, y: 659428.42},
+                        level: 8,
+                        isEmbeddedToggle: false,
+                        background: 1,
+                        bgButton: true,
+                        zoomButton: true,
+                        layersMode: 3,
+                        zoomButtons: true,
+                        onLoad: drawInitial,
+                    });
+            };
+        </script>
+    </head>
+    <body>
+        <div id="map" style="width:100%;height:600px"></div>
+        <script>loadMap()</script>
+    </body>
+</html>
+
