@@ -4,6 +4,12 @@
         <script src="https://www.govmap.gov.il/govmap/api/govmap.api.js"></script>
         <script type="text/javascript">
             function getLineData(x1, y1, x2, y2, arrowDirection) {
+		const wkt = [
+                    `LINESTRING(${x1} ${y1}, ${x2} ${y2})`
+		];
+		if (! arrowDirection) {
+			return wkt;
+		}
                 const arrowLength = 8;
                 const distance = 4
                 let lineCenterX = (x1 + x2) / 2;
@@ -22,8 +28,7 @@
                 const arrowPointTipX = lineCenterX + arrowLength * Math.cos(perpendicularAngle);
                 const arrowPointTipY = lineCenterY + arrowLength * Math.sin(perpendicularAngle);
 
-                const wkt = [
-                    `LINESTRING(${x1} ${y1}, ${x2} ${y2})`,
+                wkt.push(
                     `LINESTRING(
       ${lineCenterX} ${lineCenterY},
       ${arrowPoint1X} ${arrowPoint1Y},
@@ -31,7 +36,7 @@
       ${arrowPoint2X} ${arrowPoint2Y},
       ${lineCenterX} ${lineCenterY}
     )`
-                ];
+                );
                 return wkt;
             }
 
@@ -94,8 +99,8 @@
                             console.log(lineEnd, lineEndNext);
                 const arrow = calculateArrowDirection(lineStart, lineEnd, lineStartNext, lineEndNext);
                 const wkt = getLineData(lineStart[0], lineStart[1], lineEnd[0], lineEnd[1], arrow);
-                const wktPrev = getLineData(lineStartPrev[0], lineStartPrev[1], lineEndPrev[0], lineEndPrev[1], arrow);
-                const wktNext = getLineData(lineStartNext[0], lineStartNext[1], lineEndNext[0], lineEndNext[1], arrow);
+                const wktPrev = getLineData(lineStartPrev[0], lineStartPrev[1], lineEndPrev[0], lineEndPrev[1]);
+                const wktNext = getLineData(lineStartNext[0], lineStartNext[1], lineEndNext[0], lineEndNext[1]);
                 const wkts = [].concat(wkt).concat(wktPrev).concat(wktNext);
                 const data = {
                     wkts: wkts,
@@ -120,17 +125,9 @@
                             width: 2,
                         },
                         {
-                            color: [128, 128, 128, 1],
-                            width: 2,
-                        },
-                        {
                             color: [128, 0, 0, 1],
                             width: 2,
                         },
-                        {
-                            color: [128, 0, 0, 1],
-                            width: 2,
-                        }
                     ],
                     learExisting: true,
                     data: {
