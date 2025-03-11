@@ -3,15 +3,51 @@
         <script src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
         <script src="https://www.govmap.gov.il/govmap/api/govmap.api.js"></script>
         <script type="text/javascript">
+			function createWKTMultiLineStringWithTicks(x1, y1, x2, y2, numTicks, tickLength) {
+			  function interpolatePoints(x1, y1, x2, y2, distance) {
+				const totalDistance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+				const t = distance / totalDistance;
+				return [
+				  x1 + t * (x2 - x1),
+				  y1 + t * (y2 - y1)
+				];
+			  }
+
+			  function perpendicularPoints(px, py, length, dx, dy) {
+				const norm = Math.sqrt(dx ** 2 + dy ** 2);
+				const ux = -dy / norm;
+				const uy = dx / norm;
+				return [
+				  [px + ux * length, py + uy * length],
+				  [px - ux * length, py - uy * length]
+				];
+			  }
+
+			  const tickLines = [];
+			  const totalDistance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+              const tickSpacing = totalDistance / numTicks;
+
+			  for (let i = 0; i <= numTicks; i++) {
+				const pointOnLine = interpolatePoints(x1, y1, x2, y2, i * tickSpacing);
+				const [tickStart, tickEnd] = perpendicularPoints(pointOnLine[0], pointOnLine[1], tickLength / 2, x2 - x1, y2 - y1);
+				//tickLines.push(`(${tickStart.join(' ')}, ${tickEnd.join(' ')})`);
+				tickLines.push(`LINESTRING(${tickStart.join(' ')}, ${tickEnd.join(' ')})`);
+			  }
+
+			  //return `MULTILINESTRING(${tickLines.join(', ')})`;
+			  return tickLines
+			}
+
             function getLineData(x1, y1, x2, y2, arrowDirection) {
-		const wkt = [
+				const wkt = [
                     `LINESTRING(${x1} ${y1}, ${x2} ${y2})`
-		];
-		if (! arrowDirection) {
-			return wkt;
-		}
+				];
+                const ticks = createWKTMultiLineStringWithTicks(x1, y1, x2, y2, 6, 20);
+				if (! arrowDirection) {
+					return wkt.concat(ticks);
+				}
                 const arrowLength = 8;
-                const distance = 4
+                const distance = 10
                 let lineCenterX = (x1 + x2) / 2;
                 let lineCenterY = (y1 + y2) / 2;
                 const angle = Math.atan2(y2 - y1, x2 - x1);
@@ -37,7 +73,7 @@
       ${lineCenterX} ${lineCenterY}
     )`
                 );
-                return wkt;
+                return wkt.concat(ticks);
             }
 
             function startDisplay(centerX, centerY, data) {
@@ -95,13 +131,15 @@
 				  getFloatParam('next_line_end_x', 0),
 				  getFloatParam('next_line_end_y', 0)
 				];
-                            console.log(lineStart, lineStartNext);
-                            console.log(lineEnd, lineEndNext);
                 const arrow = calculateArrowDirection(lineStart, lineEnd, lineStartNext, lineEndNext);
                 const wkt = getLineData(lineStart[0], lineStart[1], lineEnd[0], lineEnd[1], arrow);
+                const wktColor = Array(wkt.length).fill({color: [0, 255, 0, 1], width: 2});
                 const wktPrev = getLineData(lineStartPrev[0], lineStartPrev[1], lineEndPrev[0], lineEndPrev[1]);
+                const wktPrevColor = Array(wktPrev.length).fill({color: [128, 128, 128, 1], width: 2});
                 const wktNext = getLineData(lineStartNext[0], lineStartNext[1], lineEndNext[0], lineEndNext[1]);
+                const wktNextColor = Array(wktNext.length).fill({color: [128, 0, 0, 1], width: 2});
                 const wkts = [].concat(wkt).concat(wktPrev).concat(wktNext);
+                const colors = [].concat(wktColor).concat(wktPrevColor).concat(wktNextColor);
                 const data = {
                     wkts: wkts,
                     names: ['p1', 'a1', 'p2', 'a2', 'p3', 'a3'],
@@ -111,24 +149,7 @@
                         color: [0, 255, 0, 1],
                         width: 2,
                     },
-                    symbols: [
-                        {
-                            color: [0, 255, 0, 1],
-                            width: 2,
-                        },
-                        {
-                            color: [0, 255, 0, 1],
-                            width: 2,
-                        },
-                        {
-                            color: [128, 128, 128, 1],
-                            width: 2,
-                        },
-                        {
-                            color: [128, 0, 0, 1],
-                            width: 2,
-                        },
-                    ],
+                    symbols: colors,
                     learExisting: true,
                     data: {
                         tooltips: ['קו גובה'],
