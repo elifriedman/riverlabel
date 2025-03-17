@@ -236,6 +236,7 @@
                         <tr>
                             <th>Email</th>
                             <th>Active</th>
+                            <th>Tasks Assigned</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -438,6 +439,20 @@
             document.getElementById('totalUsers').textContent = `Total Users: ${totalUsersCount}`;
             document.getElementById('activeUsers').textContent = `Active Users: ${activeUsersCount}`;
             
+            // Calculate task counts for each user
+            const taskCounts = {};
+            users.forEach(user => {
+                taskCounts[user.email] = 0;
+            });
+            
+            tasks.forEach(task => {
+                task.labelers.forEach(email => {
+                    if (taskCounts[email] !== undefined) {
+                        taskCounts[email]++;
+                    }
+                });
+            });
+            
             users.forEach(user => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -446,6 +461,7 @@
                         <input type="checkbox" ${user.active ? 'checked' : ''} 
                             onchange="updateUserActive('${user.email}', this.checked)">
                     </td>
+                    <td>${taskCounts[user.email] || 0}</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -594,6 +610,9 @@
             const container = document.querySelector(`.multi-select[data-task-index="${taskIndex}"]`);
             const parent = container.parentNode;
             parent.replaceChild(createMultiSelect(task.labelers, taskIndex), container);
+            
+            // Update the users table to reflect the new task assignments
+            renderUsersTable();
         }
 
         // Remove user from task
@@ -608,6 +627,9 @@
                 const container = document.querySelector(`.multi-select[data-task-index="${taskIndex}"]`);
                 const parent = container.parentNode;
                 parent.replaceChild(createMultiSelect(task.labelers, taskIndex), container);
+                
+                // Update the users table to reflect the new task assignments
+                renderUsersTable();
             }
         }
 
@@ -690,6 +712,8 @@
                     tasks[i].labelers = usersForTask;
                 }
                 renderTasksTable();
+                // Also update the users table to show new task counts
+                renderUsersTable();
                 showMessage('Tasks have been successfully assigned!', 'success');
             } catch (error) {
                 showMessage('Error assigning tasks', 'error');
