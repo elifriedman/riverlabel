@@ -8,6 +8,7 @@ from pathlib import Path
 import logging
 from collections import defaultdict
 import os
+import threading
 from flask import Blueprint, Flask, request, jsonify, render_template_string
 from pathlib import Path
 from functools import wraps
@@ -169,14 +170,19 @@ def save_and_delete_project(project):
     ls.tasks.delete_all_tasks(project.id)
 
 
-@app.route('/updateTasks', methods=['POST'])
-@token_required
-def update_tasks():
-    data = request.json
+# Dictionary to track task update status
+task_update_status = {}
+
+def process_task_updates(data, request_id):
+    """Background function to process task updates"""
     email2task = defaultdict(list)
     try:
+        task_update_status[request_id] = {"status": "processing", "message": "Task update started"}
+        
         active_users = [u.email for u in get_active_users(ls)]
         updates = []
+        
+        # Step 1: Collect all updates
         for entry in tqdm(data, desc="updateTasks: getting task updates"):
             task_id = entry.get('id')
             emails = list(set(entry.get('labelers') or []))
@@ -194,19 +200,46 @@ def update_tasks():
             task.data["labelers"] = emails
             task.data["is_demo"] = is_demo
             updates.append(task)
+        
+        task_update_status[request_id]["message"] = f"Processing {len(updates)} task updates for {len(email2task)} users"
+        
+        # Step 2: Update user projects
         for email, tasks in tqdm(email2task.items(), desc="updateTasks: adding tasks to projects"):
             project = add_new_project_if_needed(ls, email)
             save_and_delete_project(project)
             tasks = sorted(tasks, key=lambda task: task.data.get("is_demo", False), reverse=True)  # is_demo=True first
             for task in tasks:
                 ls.tasks.create(data=task.data, project=project.id)
+        
+        # Step 3: Update main project tasks
         for task in tqdm(updates, desc="updateTasks: updating labelers"):
             ls.tasks.update(id=task.id, data=task.data)
-        return jsonify({'message': 'Tasks assigned successfully'}), 200
+        
+        task_update_status[request_id] = {"status": "completed", "message": f"Successfully updated {len(updates)} tasks"}
     except Exception as exc:
         tb = traceback.format_exc()
         print(f"ERROR", tb)
-        return jsonify({"message": f"error\n{tb}"}), 500
+        task_update_status[request_id] = {"status": "error", "message": str(exc), "traceback": tb}
+
+@app.route('/updateTasks', methods=['POST'])
+@token_required
+def update_tasks():
+    data = request.json
+    
+    # Generate a unique ID for this request
+    request_id = str(uuid.uuid4())
+    
+    # Start the background task
+    thread = threading.Thread(target=process_task_updates, args=(data, request_id))
+    thread.daemon = True
+    thread.start()
+    
+    # Return immediately with the request ID
+    return jsonify({
+        'message': 'Task update started in background',
+        'request_id': request_id,
+        'status_endpoint': f'/taskUpdateStatus?id={request_id}'
+    }), 202  # 202 Accepted
 
 
 def reset_password(email, password):
@@ -223,6 +256,22 @@ def reset_password(email, password):
         logging.exception(f"Error running label-studio reset_password --email {email}", exc_info=exc)
         return False
 
+
+@app.route('/taskUpdateStatus', methods=['GET'])
+@token_required
+def task_update_status_endpoint():
+    request_id = request.args.get('id')
+    if not request_id or request_id not in task_update_status:
+        return jsonify({'error': 'Invalid or expired request ID'}), 404
+    
+    status = task_update_status[request_id]
+    
+    # Clean up completed or error statuses after they've been retrieved
+    if status['status'] in ['completed', 'error']:
+        # Keep the status around for a while, but we could remove it here
+        pass
+        
+    return jsonify(status)
 
 @app.route('/signup', methods=["GET", "POST"])
 @token_required
