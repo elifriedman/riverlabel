@@ -351,6 +351,66 @@ def task_update_status_endpoint():
         
     return jsonify(status)
 
+@app.route('/taggers', methods=['GET'])
+def taggers():
+    # Get all users without requiring a token
+    users_list = get_users(ls, None)
+    
+    # Get all projects to find user projects
+    projects = ls.projects.list()
+    email_to_project = {}
+    
+    for project in projects:
+        if "@" in project.title:
+            email = project.title
+            email_to_project[email] = project.id
+    
+    # Prepare user data for the template
+    user_data = []
+    for user in users_list:
+        if "_" in user.username:
+            score, active = user.username.split("_")
+            active = active == "1"
+        else:
+            active = False
+        
+        # Find project ID for this user
+        project_id = email_to_project.get(user.email)
+        
+        user_data.append({
+            "email": user.email,
+            "active": active,
+            "project_id": project_id
+        })
+    
+    # Sort users by email
+    user_data.sort(key=lambda x: x["email"])
+    
+    # Render the template with the user data
+    file = Path(__file__).parent / "static_taggers.html"
+    template = file.read_text()
+    
+    # Generate the table rows HTML
+    rows_html = ""
+    for user in user_data:
+        project_url = f"http://labelstudio.elifdev.com/projects/{user['project_id']}" if user['project_id'] else "#"
+        project_link = f"<a href='{project_url}' target='_blank'>Open Project</a>" if user['project_id'] else "No project"
+        status_class = "active" if user['active'] else "inactive"
+        status_text = "Active" if user['active'] else "Inactive"
+        
+        rows_html += f"""
+        <tr>
+            <td>{user['email']}</td>
+            <td><span class="status-badge {status_class}">{status_text}</span></td>
+            <td>{project_link}</td>
+        </tr>
+        """
+    
+    # Insert the rows into the template
+    template = template.replace("<!-- User data will be populated by the server -->", rows_html)
+    
+    return render_template_string(template)
+
 @app.route('/signup', methods=["GET", "POST"])
 @token_required
 def signup_form():
