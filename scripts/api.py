@@ -375,6 +375,10 @@ def taggers():
         else:
             active = False
         
+        # Only include active users
+        if not active:
+            continue
+            
         # Find project ID for this user
         project_id = email_to_project.get(user.email)
         
@@ -402,7 +406,6 @@ def taggers():
         rows_html += f"""
         <tr>
             <td>{user['email']}</td>
-            <td><span class="status-badge {status_class}">{status_text}</span></td>
             <td>{project_link}</td>
         </tr>
         """
