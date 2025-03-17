@@ -218,10 +218,16 @@ E!DOCTYPE html>
         
         <div class="card">
             <h2>Users</h2>
-            <div id="addUser">
-                <input id="addUserInput" type="text" value="" placeholder="Add User" />
-                <input id="addUserCheckbox" type="checkbox" checked>
-                <button id="addUserBtn">Add User</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div id="addUser">
+                    <input id="addUserInput" type="text" value="" placeholder="Add User" />
+                    <input id="addUserCheckbox" type="checkbox" checked>
+                    <button id="addUserBtn">Add User</button>
+                </div>
+                <div id="userStats" style="font-size: 14px; background-color: rgba(67, 97, 238, 0.1); padding: 8px 12px; border-radius: 4px;">
+                    <span id="totalUsers">Total Users: 0</span> | 
+                    <span id="activeUsers">Active Users: 0</span>
+                </div>
             </div>
             <div class="spinner" id="usersSpinner"></div>
             <div id="usersTableContainer" class="tableContainer">
@@ -422,9 +428,15 @@ E!DOCTYPE html>
 
         // Render users table
         function renderUsersTable() {
-	    users = users.sort((a, b) => a.email.localeCompare(b.email));
+            users = users.sort((a, b) => a.email.localeCompare(b.email));
             const tbody = usersTable.querySelector('tbody');
             tbody.innerHTML = '';
+            
+            // Update user stats
+            const totalUsersCount = users.length;
+            const activeUsersCount = users.filter(user => user.active).length;
+            document.getElementById('totalUsers').textContent = `Total Users: ${totalUsersCount}`;
+            document.getElementById('activeUsers').textContent = `Active Users: ${activeUsersCount}`;
             
             users.forEach(user => {
                 const row = document.createElement('tr');
@@ -610,6 +622,11 @@ E!DOCTYPE html>
             const user = users.find(u => u.email === email);
             if (user) {
                 user.active = active;
+                // Update user stats when active status changes
+                const totalUsersCount = users.length;
+                const activeUsersCount = users.filter(user => user.active).length;
+                document.getElementById('totalUsers').textContent = `Total Users: ${totalUsersCount}`;
+                document.getElementById('activeUsers').textContent = `Active Users: ${activeUsersCount}`;
             }
         }
 
