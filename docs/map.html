@@ -183,17 +183,20 @@
         <script>
             // Wait for the govmap API to be fully loaded
             if (typeof govmap !== 'undefined') {
+                console.log("starting govmap")
                 loadMap();
             } else {
                 document.addEventListener('DOMContentLoaded', function() {
-                    // Check if govmap is loaded
                     if (typeof govmap !== 'undefined') {
+                        console.log("page finished loading, starting govmap")
                         loadMap();
                     } else {
                         // If not loaded yet, wait for it
+                        console.log("page finished loading, waiting for govmap")
                         const checkGovmap = setInterval(function() {
                             if (typeof govmap !== 'undefined') {
                                 clearInterval(checkGovmap);
+                                console.log("woo that took a while, starting govmap")
                                 loadMap();
                             }
                         }, 100);
@@ -203,7 +206,6 @@
                             clearInterval(checkGovmap);
                             if (typeof govmap === 'undefined') {
                                 console.error('GovMap API failed to load');
-                                alert('Error: GovMap API failed to load. Please refresh the page.');
                             }
                         }, 10000);
                     }
