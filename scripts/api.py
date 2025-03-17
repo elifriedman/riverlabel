@@ -45,6 +45,7 @@ load_dotenv()
 
 ls = LabelStudio(
     base_url="http://localhost:8080", api_key=os.environ.get("LABEL_STUDIO")
+)
 API_TOKEN = os.environ.get("API_TOKEN")
 
 def token_required(f):
