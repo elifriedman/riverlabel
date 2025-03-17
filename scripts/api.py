@@ -33,15 +33,19 @@ app = Blueprint('api', __name__)
 env = os.environ.get("ENV", "SERVER")
 env = "SERVER"
 
-if env == "LOCAL":
-    ls = LabelStudio(
-        base_url="http://localhost:8080", api_key="token"
-    )
-else:
-    ls = LabelStudio(
-        base_url="https://labelstudio.elifdev.com", api_key="token"
-    )
-API_TOKEN = "f4ff7b4e9"
+def load_dotenv(f=".env"):
+    for line in Path(f).read_text():
+        line = line.strip()
+        if line.startswith("#"):
+            continue
+        k, v = line.split("=")
+        os.environ[k] = v
+
+load_dotenv()
+
+ls = LabelStudio(
+    base_url="http://localhost:8080", api_key=os.environ.get("LABEL_STUDIO")
+API_TOKEN = os.environ.get("API_TOKEN")
 
 def token_required(f):
     @wraps(f)
@@ -211,13 +215,13 @@ def reset_tasks():
 def save_and_delete_project(project):
     tasks = get_tasks(ls, project.id, None)
     tasks = [t for t in tasks if t.annotations]
+    ls.tasks.delete_all_tasks(id=project.id)
     if len(tasks) == 0:
         return
     tasks = [json.loads(t.json()) for t in tasks]
     tasks = json.dumps(tasks, ensure_ascii=False)
     path = Path("deleted_tasks") / f"{project.title}_{project.id}_{uuid.uuid4()}.json"
     path.write_text(tasks)
-    ls.tasks.delete_all_tasks(project.id)
 
 
 # Dictionary to track task update status
@@ -260,15 +264,17 @@ def process_task_updates(data, request_id):
         task_update_status[request_id]["message"] = f"Processing {len(updates)} task updates for {len(email2task)} users"
         
         # Step 2: Update user projects
-        for email, tasks in tqdm(email2task.items(), desc="updateTasks: adding tasks to projects"):
+        for i, (email, tasks) in enumerate(tqdm(email2task.items(), desc="updateTasks: adding tasks to projects")):
+            task_update_status[request_id]["message"] = f"Updating user #{i+1}/{len(email2task)} {email} with {len(tasks)} tasks"
             project = add_new_project_if_needed(ls, email)
             save_and_delete_project(project)
             tasks = sorted(tasks, key=lambda task: task.data.get("is_demo", False), reverse=True)  # is_demo=True first
-            for task in tasks:
+            for j, task in enumerate(tasks):
                 ls.tasks.create(data=task.data, project=project.id)
         
         # Step 3: Update main project tasks
-        for task in tqdm(updates, desc="updateTasks: updating labelers"):
+        for i, task in enumerate(tqdm(updates, desc="updateTasks: updating labelers")):
+            task_update_status[request_id]["message"] = f"Processing base task {i+1} / {len(updates)}"
             ls.tasks.update(id=task.id, data=task.data)
         
         task_update_status[request_id] = {"status": "completed", "message": f"Successfully updated {len(updates)} tasks"}
