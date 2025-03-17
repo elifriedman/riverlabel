@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import uuid
 import json
 import traceback
@@ -13,6 +14,7 @@ from functools import wraps
 from scripts.backend import (
     add_new_project_if_needed,
     get_all_tasks,
+    get_tasks,
     get_users,
     create_view_for_user,
     delete_view_for_user,
@@ -124,7 +126,7 @@ def get_title_parts(task):
 def tasks():
     BASE_PROJECT = 34
     project_id = request.args.get('project_id', BASE_PROJECT)
-    tasks = get_all_tasks(ls, project_id)
+    tasks = get_tasks(ls, project_id, None)
     tasks = sorted(tasks, key=get_title_parts)
     data = [
         {
@@ -175,7 +177,7 @@ def update_tasks():
     try:
         active_users = [u.email for u in get_active_users(ls)]
         updates = []
-        for entry in data:
+        for entry in tqdm(data, desc="updateTasks: getting task updates"):
             task_id = entry.get('id')
             emails = list(set(entry.get('labelers') or []))
             is_demo = entry.get("is_demo", False)
@@ -192,13 +194,13 @@ def update_tasks():
             task.data["labelers"] = emails
             task.data["is_demo"] = is_demo
             updates.append(task)
-        for email, tasks in email2task.items():
+        for email, tasks in tqdm(email2task.items(), desc="updateTasks: adding tasks to projects"):
             project = add_new_project_if_needed(ls, email)
             save_and_delete_project(project)
             tasks = sorted(tasks, key=lambda task: task.data.get("is_demo", False), reverse=True)  # is_demo=True first
             for task in tasks:
                 ls.tasks.create(data=task.data, project=project.id)
-        for task in updates:
+        for task in tqdm(updates, desc="updateTasks: updating labelers"):
             ls.tasks.update(id=task.id, data=task.data)
         return jsonify({'message': 'Tasks assigned successfully'}), 200
     except Exception as exc:
