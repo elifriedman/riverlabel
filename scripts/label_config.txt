@@ -1,0 +1,26 @@
+<View>
+
+<View style="padding: 7px 2em; margin: 2em 0; background: #f7e0c5; position: sticky; top: 0; border-radius: 10px; z-index: 100; display: flex; justify-content: center; align-items: center; text-align: center; font-size: 1.4em;">
+   <Text name="stream_name" value="$title" highlightColor="#ff2000"/>
+ </View>
+
+
+    <!-- Control tag for region labels -->
+    <TimeSeriesLabels name="label" toName="ts">
+        <Label value="סוללה" background="red"/>
+        <Label value="אפיק טבעי" background="#89c7fe"/>
+        <Label value="אפיק מוסדר" background="#79ec6a"/>
+    </TimeSeriesLabels>
+	
+    <!-- Object tag for time series data source -->
+    <TimeSeries name="ts" valueType="json" value="$timeseriesUrl" sep="," timeColumn="distance_along_profile" overviewChannels="Elevation" overviewWidth="100%">
+
+        <Channel column="elevation_prev" units="m" height="95" displayFormat=",.1f" strokeColor="#c5e3f7" showAxis="false" legend="החתך הקודם"/>
+
+        <Channel column="elevation" units="m" displayFormat=",.1f" strokeColor="#3083bb" legend="חתך נוכחי"/>
+      
+        <Channel column="elevation_next" units="m" height="95" displayFormat=",.1f" showAxis="false" strokeColor="#c5e3f7" legend="החתך הבא"/>
+    </TimeSeries>    
+	<HyperText value="$map" name="map" inline="false" valueType="text" clickableLinks="true"/>
+  
+</View>
