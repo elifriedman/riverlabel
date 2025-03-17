@@ -41,7 +41,7 @@ else:
     ls = LabelStudio(
         base_url="https://labelstudio.elifdev.com", api_key="token"
     )
-API_TOKEN = "token"
+API_TOKEN = "f4ff7b4e9"
 
 def token_required(f):
     @wraps(f)
@@ -148,23 +148,24 @@ def hash_task(task):
 @token_required
 def reset_tasks():
     BASE_PROJECT = 34
-    tasks = get_all_tasks(ls, BASE_PROJECT)
-    for task in tasks:
+    tasks = get_tasks(ls, BASE_PROJECT, None)
+    for task in tqdm(tasks, desc="resetTasks: updating base tasks"):
         task.data["labelers"] = []
+        task.data["is_demo"] = False
         ls.tasks.update(task.id, data=task.data)
-    for project in ls.projects.list():
+    for project in tqdm(ls.projects.list(), desc="resetTasks: resetting projects"):
         if "@" in project.title:
             save_and_delete_project(project)
     return jsonify({'message': 'Tasks reset successfully'}), 200
 
 
 def save_and_delete_project(project):
-    tasks = get_all_tasks(ls, project.id)
+    tasks = get_tasks(ls, project.id, None)
     tasks = [t for t in tasks if t.annotations]
     if len(tasks) == 0:
         return
     tasks = [json.loads(t.json()) for t in tasks]
-    tasks = json.dumps(tasks)
+    tasks = json.dumps(tasks, ensure_ascii=False)
     path = Path("deleted_tasks") / f"{project.title}_{project.id}_{uuid.uuid4()}.json"
     path.write_text(tasks)
     ls.tasks.delete_all_tasks(project.id)
@@ -183,15 +184,21 @@ def process_task_updates(data, request_id):
         updates = []
         
         # Step 1: Collect all updates
-        for entry in tqdm(data, desc="updateTasks: getting task updates"):
+        for i, entry in enumerate(tqdm(data, desc="updateTasks: getting task updates")):
+            task_update_status[request_id] = {"status": "processing", "message": f"Task update started {i+1}/{len(data)}"}
             task_id = entry.get('id')
             emails = list(set(entry.get('labelers') or []))
             is_demo = entry.get("is_demo", False)
             if is_demo:
                 emails = active_users
             task = get_task_by_id(ls, task_id)
-            no_updates = sorted(emails) == sorted(task.data.get("labelers", []))
-            if no_updates:
+            no_email_updates = sorted(emails) == sorted(task.data.get("labelers", []))
+            demo_updates = is_demo != task.data.get("is_demo")
+            if no_email_updates:
+                if demo_updates:
+                    task.data["labelers"] = emails
+                    task.data["is_demo"] = is_demo
+                    updates.append(task)
                 continue
             for email in task.data.get("labelers", []):
                 email2task[email]  # make sure this email is reset if nothing is added
