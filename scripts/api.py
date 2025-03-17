@@ -403,8 +403,9 @@ def taggers():
         status_class = "active" if user['active'] else "inactive"
         status_text = "Active" if user['active'] else "Inactive"
         
+        project_url = f"http://labelstudio.elifdev.com/projects/{user['project_id']}" if user['project_id'] else "#"
         rows_html += f"""
-        <tr>
+        <tr onclick="window.open('{project_url}', '_blank')" title="Click to open project">
             <td>{user['email']}</td>
             <td>{project_link}</td>
         </tr>
