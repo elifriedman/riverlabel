@@ -144,19 +144,68 @@ def tasks():
 def hash_task(task):
     return str(task.data.get('timeseriesUrl'))
 
+# Dictionary to track task reset status
+task_reset_status = {}
+
+def process_task_reset(request_id):
+    """Background function to process task reset"""
+    try:
+        task_reset_status[request_id] = {"status": "processing", "message": "Task reset started"}
+        
+        BASE_PROJECT = 34
+        tasks = get_tasks(ls, BASE_PROJECT, None)
+        
+        # Step 1: Reset all tasks in base project
+        for i, task in enumerate(tqdm(tasks, desc="resetTasks: updating base tasks")):
+            task_reset_status[request_id] = {
+                "status": "processing", 
+                "message": f"Resetting tasks {i+1}/{len(tasks)}"
+            }
+            task.data["labelers"] = []
+            task.data["is_demo"] = False
+            ls.tasks.update(task.id, data=task.data)
+        
+        # Step 2: Reset all user projects
+        projects = ls.projects.list()
+        user_projects = [p for p in projects if "@" in p.title]
+        task_reset_status[request_id] = {
+            "status": "processing", 
+            "message": f"Resetting {len(user_projects)} user projects"
+        }
+        
+        for i, project in enumerate(tqdm(user_projects, desc="resetTasks: resetting projects")):
+            task_reset_status[request_id] = {
+                "status": "processing", 
+                "message": f"Resetting user project {i+1}/{len(user_projects)}: {project.title}"
+            }
+            save_and_delete_project(project)
+        
+        task_reset_status[request_id] = {
+            "status": "completed", 
+            "message": f"Successfully reset {len(tasks)} tasks and {len(user_projects)} user projects"
+        }
+    except Exception as exc:
+        tb = traceback.format_exc()
+        print(f"ERROR", tb)
+        task_reset_status[request_id] = {"status": "error", "message": str(exc), "traceback": tb}
+
 @app.route('/resetTasks', methods=['POST'])
 @token_required
 def reset_tasks():
-    BASE_PROJECT = 34
-    tasks = get_tasks(ls, BASE_PROJECT, None)
-    for task in tqdm(tasks, desc="resetTasks: updating base tasks"):
-        task.data["labelers"] = []
-        task.data["is_demo"] = False
-        ls.tasks.update(task.id, data=task.data)
-    for project in tqdm(ls.projects.list(), desc="resetTasks: resetting projects"):
-        if "@" in project.title:
-            save_and_delete_project(project)
-    return jsonify({'message': 'Tasks reset successfully'}), 200
+    # Generate a unique ID for this request
+    request_id = str(uuid.uuid4())
+    
+    # Start the background task
+    thread = threading.Thread(target=process_task_reset, args=(request_id,))
+    thread.daemon = True
+    thread.start()
+    
+    # Return immediately with the request ID
+    return jsonify({
+        'message': 'Task reset started in background',
+        'request_id': request_id,
+        'status_endpoint': f'/taskResetStatus?id={request_id}'
+    }), 202  # 202 Accepted
 
 
 def save_and_delete_project(project):
@@ -263,6 +312,22 @@ def reset_password(email, password):
         logging.exception(f"Error running label-studio reset_password --email {email}", exc_info=exc)
         return False
 
+
+@app.route('/taskResetStatus', methods=['GET'])
+@token_required
+def task_reset_status_endpoint():
+    request_id = request.args.get('id')
+    if not request_id or request_id not in task_reset_status:
+        return jsonify({'error': 'Invalid or expired request ID'}), 404
+    
+    status = task_reset_status[request_id]
+    
+    # Clean up completed or error statuses after they've been retrieved
+    if status['status'] in ['completed', 'error']:
+        # Keep the status around for a while, but we could remove it here
+        pass
+        
+    return jsonify(status)
 
 @app.route('/taskUpdateStatus', methods=['GET'])
 @token_required
