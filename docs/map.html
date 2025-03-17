@@ -180,7 +180,36 @@
     </head>
     <body>
         <div id="map" style="width:100%;height:600px"></div>
-        <script>loadMap()</script>
+        <script>
+            // Wait for the govmap API to be fully loaded
+            if (typeof govmap !== 'undefined') {
+                loadMap();
+            } else {
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Check if govmap is loaded
+                    if (typeof govmap !== 'undefined') {
+                        loadMap();
+                    } else {
+                        // If not loaded yet, wait for it
+                        const checkGovmap = setInterval(function() {
+                            if (typeof govmap !== 'undefined') {
+                                clearInterval(checkGovmap);
+                                loadMap();
+                            }
+                        }, 100);
+                        
+                        // Set a timeout to avoid infinite waiting
+                        setTimeout(function() {
+                            clearInterval(checkGovmap);
+                            if (typeof govmap === 'undefined') {
+                                console.error('GovMap API failed to load');
+                                alert('Error: GovMap API failed to load. Please refresh the page.');
+                            }
+                        }, 10000);
+                    }
+                });
+            }
+        </script>
     </body>
 </html>
 
