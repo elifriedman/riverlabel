@@ -10,6 +10,7 @@ def load_json(f):
     with open(f) as f:
         return json.load(f)
 
+
 def get_users(client, emails: list=None):
     users = client.users.list()
     if emails is None:
@@ -182,11 +183,14 @@ def signup(client, email, score=0, active=True):
     if not isinstance(email, str) or not email:
         return
     email = email.lower()
-    emails = [user.email for user in client.users.list()]
+    emails = [user.email.lower() for user in client.users.list()]
+    username = f"{score}_{1 if active else 0}"
     if email not in emails:
-        username = f"{score}_{1 if active else 0}"
         client.users.create(username=username, email=email)
         reset_password(email, "abc123")
+    else:
+        user = [user for user in client.users.list() if user.email.lower() == email][0]
+        client.users.update(id=user.id, username=username)
     projects = list(client.projects.list())
     titles = [p.title for p in projects]
     if email in titles:

@@ -34,9 +34,9 @@ env = os.environ.get("ENV", "SERVER")
 env = "SERVER"
 
 def load_dotenv(f=".env"):
-    for line in Path(f).read_text():
+    for line in Path(f).read_text().split("\n"):
         line = line.strip()
-        if line.startswith("#"):
+        if line.startswith("#") or "=" not in line:
             continue
         k, v = line.split("=")
         os.environ[k] = v
