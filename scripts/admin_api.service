@@ -1,13 +1,12 @@
 [Unit]
-Description=Launch Label Studio
+Description=Launch Admin Pages
 After=network.target
 
 [Service]
-ExecStart=/home/ubuntu/scripts/runner.sh
+ExecStart=/home/ubuntu/scripts/admin_runner.sh
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/
-Environment=LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK=true
 
 [Install]
 WantedBy=multi-user.target

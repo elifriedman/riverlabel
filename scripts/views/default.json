@@ -44,7 +44,20 @@
     "gridWidth": 4,
     "semantic_search": [],
     "filters": {
-        "conjunction": "and",
-        "items": []
+        "conjunction": "or",
+        "items": [
+            {
+                "filter": "filter:tasks:data.is_demo",
+                "operator": "empty",
+                "type": "Unknown",
+                "value": true
+            },
+            {
+                "filter": "filter:tasks:data.is_demo",
+                "operator": "equal",
+                "type": "Boolean",
+                "value": false
+            }
+        ]
     }
 }
