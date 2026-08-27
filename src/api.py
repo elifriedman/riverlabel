@@ -32,7 +32,9 @@ app = Blueprint('api', __name__)
 
 env = os.environ.get("ENV", "SERVER")
 env = "SERVER"
-STATIC_PATH = Path(__file__).parent.parent / "html"
+
+BASE_PROJECT = 34
+STATIC_PATH = Path(__file__).parent.parent / "static"
 
 def load_dotenv(f=".env"):
     for line in Path(f).read_text().split("\n"):
@@ -131,7 +133,6 @@ def get_title_parts(task):
 @app.route('/tasks', methods=['GET'])
 @token_required
 def tasks():
-    BASE_PROJECT = 34
     project_id = request.args.get('project_id', BASE_PROJECT)
     tasks = get_tasks(ls, project_id, None)
     tasks = sorted(tasks, key=get_title_parts)
@@ -158,7 +159,6 @@ def process_task_reset(request_id):
     try:
         task_reset_status[request_id] = {"status": "processing", "message": "Task reset started"}
         
-        BASE_PROJECT = 34
         tasks = get_tasks(ls, BASE_PROJECT, None)
         
         # Step 1: Reset all tasks in base project

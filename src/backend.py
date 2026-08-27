@@ -9,6 +9,7 @@ from label_studio_sdk.client import LabelStudio
 from label_studio_sdk.data_manager import Filters, Column, Type, Operator
 
 VIEW_PATH = Path(__file__).parent.parent / "views"
+STATIC_PATH = Path(__file__).parent.parent / "static"
 
 def load_json(f):
     with open(f) as f:
@@ -200,7 +201,7 @@ def signup(client, email, score=0, active=True):
     if email in titles:
         project = projects[titles.index(email)]
     else:
-        project = client.projects.create(title=email, label_config=Path("scripts/label_config.txt").read_text())
+        project = client.projects.create(title=email, label_config=(STATIC_PATH / "label_config.txt").read_text())
     add_all_views(client, project)
     return project
 
