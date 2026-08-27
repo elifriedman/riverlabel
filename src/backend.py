@@ -1,10 +1,14 @@
 import json
-from functools import partial
-from pathlib import Path
+import logging
 import subprocess
 import sys
+
+from functools import partial
+from pathlib import Path
 from label_studio_sdk.client import LabelStudio
 from label_studio_sdk.data_manager import Filters, Column, Type, Operator
+
+VIEW_PATH = Path(__file__).parent.parent / "views"
 
 def load_json(f):
     with open(f) as f:
@@ -173,10 +177,10 @@ def get_active_users(client):
 def add_all_views(client, project):
     views = client.views.list(project=project.id)
     if len(views) == 0:
-        path = Path(__file__).parent / "views/default.json"
+        path = VIEW_PATH / "default.json"
         views = [client.views.create(project=project.id, data=load_json(path))]
     if len(views) == 1:
-        path = Path(__file__).parent / "views/demo.json"
+        path = VIEW_PATH / "demo.json"
         views = [client.views.create(project=project.id, data=load_json(path))]
 
 def signup(client, email, score=0, active=True):

@@ -1,4 +1,4 @@
 #!/bin/bash
 
 cd /home/ubuntu
-/home/ubuntu/venv/bin/python -m scripts.api
+/home/ubuntu/venv/bin/python -m src.api

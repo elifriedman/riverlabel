@@ -12,7 +12,7 @@ import threading
 from flask import Blueprint, Flask, request, jsonify, render_template_string
 from pathlib import Path
 from functools import wraps
-from scripts.backend import (
+from src.backend import (
     add_new_project_if_needed,
     get_all_tasks,
     get_tasks,
@@ -32,6 +32,7 @@ app = Blueprint('api', __name__)
 
 env = os.environ.get("ENV", "SERVER")
 env = "SERVER"
+STATIC_PATH = Path(__file__).parent.parent / "html"
 
 def load_dotenv(f=".env"):
     for line in Path(f).read_text().split("\n"):
@@ -61,7 +62,7 @@ def token_required(f):
 @app.route('/admin', methods=['GET'])
 @token_required
 def admin():
-    file = Path(__file__).parent / "admin.html"
+    file = STATIC_PATH / "admin.html"
     return render_template_string(file.read_text())
 
 
@@ -392,7 +393,7 @@ def taggers():
     user_data.sort(key=lambda x: x["email"])
     
     # Render the template with the user data
-    file = Path(__file__).parent / "static_taggers.html"
+    file = STATIC_PATH / "static_taggers.html"
     template = file.read_text()
     
     # Generate the table rows HTML
@@ -420,7 +421,7 @@ def taggers():
 @token_required
 def signup_form():
     if request.method == "GET":
-        index_html_path = Path(__file__).parent / "signup.html"
+        index_html_path = STATIC_PATH / "signup.html"
         form_html = index_html_path.read_text()
         return render_template_string(form_html)
     email = request.form.get('email')
